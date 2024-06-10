@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat</title>
+</head>
+<body>
+    <textarea id="chat-log" cols="100" rows="20"></textarea><br>
+    <input id="chat-message-input" type="text" size="100"><br>
+    <input id="chat-message-submit" type="button" value="Send">
+
+    <script>
+        // Function to initialize WebSocket connection
+        function initWebSocket() {
+            const chatSocket = new WebSocket(
+                'ws://' + window.location.host + '/ws/chat/'
+            );
+
+            chatSocket.onopen = function(e) {
+                console.log('WebSocket connection established.');
+            };
+
+            chatSocket.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                document.querySelector('#chat-log').value += (data.message + '\n');
+            };
+
+            chatSocket.onclose = function(e) {
+                console.error('WebSocket connection closed unexpectedly: ', e);
+                // Reinitialize WebSocket if it's not in CLOSED state
+                if (chatSocket.readyState !== WebSocket.CLOSED) {
+                    console.log('Reconnecting WebSocket...');
+                    setTimeout(initWebSocket, 1000); // Retry after 1 second
+                }
+            };
+
+            chatSocket.onerror = function(e) {
+                console.error('WebSocket error occurred: ', e);
+                // Close WebSocket connection on error
+                chatSocket.close();
+            };
+
+            // Function to send message
+            function sendMessage() {
+                const messageInputDom = document.querySelector('#chat-message-input');
+                const message = messageInputDom.value;
+                chatSocket.send(JSON.stringify({
+                    'message': message
+                }));
+                messageInputDom.value = '';
+            }
+
+            // Event listener for message submit button
+            document.querySelector('#chat-message-submit').onclick = sendMessage;
+
+            // Event listener for enter key to send message
+            document.querySelector('#chat-message-input').onkeyup = function(e) {
+                if (e.keyCode === 13) {  // Enter key
+                    sendMessage();
+                }
+            };
+        }
+
+        // Initialize WebSocket when the page loads
+        window.onload = function() {
+            initWebSocket();
+        };
+    </script>
+</body>
+</html>
