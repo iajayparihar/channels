@@ -4,15 +4,19 @@
     <title>Chat</title>
 </head>
 <body>
+    <h1>Group Name : {{ group_name }}</h1>
     <textarea id="chat-log" cols="100" rows="20"></textarea><br>
     <input id="chat-message-input" type="text" size="100"><br>
     <input id="chat-message-submit" type="button" value="Send">
+    {{group_name|json_script:"group_name"}}
 
     <script>
+        const GroupName = JSON.parse(document.getElementById('group_name').textContent)
         // Function to initialize WebSocket connection
+        console.log(GroupName)
         function initWebSocket() {
             const chatSocket = new WebSocket(
-                'ws://' + window.location.host + '/ws/chat/'
+                'ws://' + "127.0.0.1:8000" + '/ws/ac/' + GroupName + "/"
             );
 
             chatSocket.onopen = function(e) {
@@ -41,9 +45,9 @@
 
             // Function to send message
             function sendMessage() {
-                const messageInputDom = document.querySelector('#chat-message-input');
+                const messageInputDom = document.getElementById('chat-message-input');
                 const message = messageInputDom.value;
-                chatSocket.send(JSON.stringify({
+                chatSocket.send(JSON.stringify({ // object to sting conversion with stringify methos of json
                     'message': message
                 }));
                 messageInputDom.value = '';
