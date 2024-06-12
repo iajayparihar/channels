@@ -2,6 +2,7 @@ import json
 from channels.consumer import SyncConsumer, AsyncConsumer, StopConsumer
 from asgiref.sync import async_to_sync, sync_to_async
 from chat_app.models import ChatModel,GroupModel
+from channels.db import database_sync_to_async
 
 class ChatSyncConsumer(SyncConsumer):
     def websocket_connect(self,event):
@@ -63,36 +64,42 @@ class ChatASyncConsumer(AsyncConsumer):
         raise StopConsumer()
     
     async def websocket_receive(self, event):
-        print('message recevied ...', event )
-        print('message is ',event['text'])
-        # import pdb;pdb.set_trace();
+        print('message received...', event)
+        print('message is', event['text'])
         # user Authentication
         user = self.scope['user']
-
         if user.is_authenticated:
             data = json.loads(event['text'])
-            group = await sync_to_async(GroupModel.objects.get)(name=self.Group_name)
+            group = await database_sync_to_async(GroupModel.objects.get)(name=self.Group_name)
             # Save the message to the database
-            await sync_to_async(ChatModel.objects.create)(content=data['message'], group=group)
+            
+            rec_save = await database_sync_to_async(ChatModel.objects.create)(content=data['message'], group=group, user=user)
 
             data['user'] = self.scope['user'].username
 
-            # sending to group 
-            await self.channel_layer.group_send(self.Group_name,{
-                'type' : 'chat.message', # chat.message is calling chat_message function
-                'message' : json.dumps(data), # message must be a string | json.dumps convert dict to string
+            # chat_queryset = await database_sync_to_async(ChatModel.objects.filter)(user=user, group=group, content=data['message']).first()
+            if rec_save:
+                timestamp = rec_save.timestamp
+                formatted_timestamp = timestamp.strftime("%B %d, %Y, %I:%M %p")  # Format the timestamp
+            else:
+                formatted_timestamp = None
+
+            data['timestamp'] = formatted_timestamp
+
+            # sending to group
+            await self.channel_layer.group_send(self.Group_name, {
+                'type': 'chat.message',  # chat.message is calling chat_message function
+                'message': json.dumps(data),  # message must be a string | json.dumps convert dict to string
             })
-        
+
         else:
             await self.send({
-                'type':'websocket.send',
-                'text' : json.dumps({"message" : 'Login Required!!!', 'user' : 'Unknown' })
+                'type': 'websocket.send',
+                'text': json.dumps({"message": 'Login Required!!!', 'user': 'Unknown'})
             })
-        
-        # sending to client for displaying message 
-    async def chat_message(self,event):        
+
+    async def chat_message(self, event):
         await self.send({
             'type': 'websocket.send',
             'text': event['message'],
         })
-

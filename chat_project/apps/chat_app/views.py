@@ -8,6 +8,7 @@ def index(request,group_name):
     if group:
         chats = ChatModel.objects.filter(group = group)
     else:
-        GroupModel.objects.create(name=group_name).save()
+        group = GroupModel.objects.create(name=group_name)
+        group.save()
 
     return render(request, 'index.html',{'group_name':group_name,'chats':chats})

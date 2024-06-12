@@ -1,23 +1,97 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat/{{group_name}}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .chat-container {
+            width: 80%;
+            max-width: 600px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .chat-header {
+            background-color: #007bff;
+            color: #fff;
+            padding: 10px 15px;
+            text-align: center;
+            font-size: 1.2em;
+        }
+        .chat-log {
+            width: 100%;
+            height: 300px;
+            border: none;
+            padding: 10px;
+            resize: none;
+            overflow-y: scroll;
+            font-size: 1em;
+            background-color: #f9f9f9;
+        }
+        .chat-input-container {
+            display: flex;
+            padding: 10px;
+            background-color: #f1f1f1;
+            border-top: 1px solid #ddd;
+        }
+        .chat-input-container input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            font-size: 1em;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+        .chat-input-container input[type="button"] {
+            padding: 10px 20px;
+            font-size: 1em;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .chat-input-container input[type="button"]:hover {
+            background-color: #5389c4;
+        }
+    </style>
 </head>
 <body>
-    <h1>Group Name : {{ group_name }}</h1>
-    <textarea id="chat-log" cols="100" rows="20" disabled>
-        {% for chat in chats %}
-            {{chat.content}} -> {{chat.timestamp}}
-        {% endfor %}
-    </textarea><br>
-    <input id="chat-message-input" type="text" size="100"><br>
-    <input id="chat-message-submit" type="button" value="Send">
+    <div class="chat-container">
+        <div class="chat-header">
+            Group Name: {{ group_name }}
+        </div>
+        <div id="chat-log" class="chat-log">
+            {% for chat in chats %}
+            <div class="chat-line" id="chat-line">
+                    @{{chat.user}} : {{chat.content}} <br> <small>{{chat.timestamp}}</small> 
+                    <hr>
+            </div>
+            {% endfor %} 
+        </div>
+
+        <div class="chat-input-container">
+            <input id="chat-message-input" type="text" placeholder="Type a message...">
+            <input id="chat-message-submit" type="button" value="Send">
+        </div>
+    </div>
     {{ group_name|json_script:"group_name" }}
 
     <script>
-        const GroupName = JSON.parse(document.getElementById('group_name').textContent)
-        // Function to initialize WebSocket connection
-        console.log(GroupName)
+        const GroupName = JSON.parse(document.getElementById('group_name').textContent);
+        
         function initWebSocket() {
             const chatSocket = new WebSocket(
                 'ws://' + "127.0.0.1:8000" + '/ws/ac/' + GroupName + "/"
@@ -27,51 +101,63 @@
                 console.log('WebSocket connection established.');
             };
 
+            // chatSocket.onmessage = function(e) {
+            //     const data = JSON.parse(e.data);
+            //     document.querySelector('#chat-line').value += ("@" + data.user + " : " + data.message + '\n');
+            // };
+
+
             chatSocket.onmessage = function(e) {
                 const data = JSON.parse(e.data);
-                console.log(typeof(data))
-                console.log('e.data  ',(data))
-                console.log('user',(data.user))
-                document.querySelector('#chat-log').value += ("@" + data.user + " : " +data.message + '\n');
+                const chatLog = document.querySelector('#chat-log');
+                
+                const newMessage = document.createElement('div');
+                newMessage.classList.add('chat-line');
+                newMessage.innerHTML = `@${data.user} : ${data.message} <br> <small>${data.timestamp}</small> <hr>`;
+                
+                chatLog.appendChild(newMessage);
+                chatLog.scrollTop = chatLog.scrollHeight;
             };
 
             chatSocket.onclose = function(e) {
                 console.error('WebSocket connection closed unexpectedly: ', e);
-                // Reinitialize WebSocket if it's not in CLOSED state
                 if (chatSocket.readyState !== WebSocket.CLOSED) {
                     console.log('Reconnecting WebSocket...');
-                    setTimeout(initWebSocket, 1000); // Retry after 1 second
+                    setTimeout(initWebSocket, 1000);
                 }
             };
 
             chatSocket.onerror = function(e) {
                 console.error('WebSocket error occurred: ', e);
-                // Close WebSocket connection on error
                 chatSocket.close();
             };
 
-            // Function to send message
             function sendMessage() {
                 const messageInputDom = document.getElementById('chat-message-input');
                 const message = messageInputDom.value;
-                chatSocket.send(JSON.stringify({ // object to sting conversion with stringify methos of json
+                chatSocket.send(JSON.stringify({
                     'message': message
                 }));
                 messageInputDom.value = '';
+                scrollToBottom();
+                
+                
             }
 
-            // Event listener for message submit button
+            function scrollToBottom() {
+                const chatLog = document.querySelector('#chat-log');
+                chatLog.scrollTop = chatLog.scrollHeight;
+            }
+
             document.querySelector('#chat-message-submit').onclick = sendMessage;
 
-            // Event listener for enter key to send message
             document.querySelector('#chat-message-input').onkeyup = function(e) {
-                if (e.keyCode === 13) {  // Enter key
+                if (e.keyCode === 13) {
                     sendMessage();
                 }
             };
         }
 
-        // Initialize WebSocket when the page loads
         window.onload = function() {
             initWebSocket();
         };
