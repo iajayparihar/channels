@@ -67,9 +67,7 @@ class ChatASyncConsumer(AsyncConsumer):
         print('message is ',event['text'])
         # import pdb;pdb.set_trace();
         data = json.loads(event['text'])
-
         group = await sync_to_async(GroupModel.objects.get)(name=self.Group_name)
-
         # Save the message to the database
         await sync_to_async(ChatModel.objects.create)(content=data['message'], group=group)
 
