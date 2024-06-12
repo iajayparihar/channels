@@ -5,7 +5,11 @@
 </head>
 <body>
     <h1>Group Name : {{ group_name }}</h1>
-    <textarea id="chat-log" cols="100" rows="20"></textarea><br>
+    <textarea id="chat-log" cols="100" rows="20">
+        {% for chat in chats %}
+            {{chat.content}} -> {{chat.timestamp}}
+        {% endfor %}
+    </textarea><br>
     <input id="chat-message-input" type="text" size="100"><br>
     <input id="chat-message-submit" type="button" value="Send">
     {{group_name|json_script:"group_name"}}
