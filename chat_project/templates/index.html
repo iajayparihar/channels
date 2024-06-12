@@ -5,7 +5,7 @@
 </head>
 <body>
     <h1>Group Name : {{ group_name }}</h1>
-    <textarea id="chat-log" cols="100" rows="20">
+    <textarea id="chat-log" cols="100" rows="20" disabled>
         {% for chat in chats %}
             {{chat.content}} -> {{chat.timestamp}}
         {% endfor %}
@@ -29,8 +29,10 @@
 
             chatSocket.onmessage = function(e) {
                 const data = JSON.parse(e.data);
-                console.log(e)
-                document.querySelector('#chat-log').value += (data.message + '\n');
+                console.log(typeof(data))
+                console.log('e.data  ',(data))
+                console.log('user',(data.user))
+                document.querySelector('#chat-log').value += ("@" + data.user + " : " +data.message + '\n');
             };
 
             chatSocket.onclose = function(e) {

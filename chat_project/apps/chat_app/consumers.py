@@ -66,16 +66,28 @@ class ChatASyncConsumer(AsyncConsumer):
         print('message recevied ...', event )
         print('message is ',event['text'])
         # import pdb;pdb.set_trace();
-        data = json.loads(event['text'])
-        group = await sync_to_async(GroupModel.objects.get)(name=self.Group_name)
-        # Save the message to the database
-        await sync_to_async(ChatModel.objects.create)(content=data['message'], group=group)
+        # user Authentication
+        user = self.scope['user']
 
-        # sending to group 
-        await self.channel_layer.group_send(self.Group_name,{
-            'type' : 'chat.message', # chat.message is calling chat_message function
-            'message' : event['text'],
-        })
+        if user.is_authenticated:
+            data = json.loads(event['text'])
+            group = await sync_to_async(GroupModel.objects.get)(name=self.Group_name)
+            # Save the message to the database
+            await sync_to_async(ChatModel.objects.create)(content=data['message'], group=group)
+
+            data['user'] = self.scope['user'].username
+
+            # sending to group 
+            await self.channel_layer.group_send(self.Group_name,{
+                'type' : 'chat.message', # chat.message is calling chat_message function
+                'message' : json.dumps(data), # message must be a string | json.dumps convert dict to string
+            })
+        
+        else:
+            await self.send({
+                'type':'websocket.send',
+                'text' : json.dumps({"message" : 'Login Required!!!', 'user' : 'Unknown' })
+            })
         
         # sending to client for displaying message 
     async def chat_message(self,event):        
